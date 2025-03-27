@@ -13,6 +13,7 @@ interface User {
 interface AuthContextType {
   setUser: (user: User | null) => void;  // ✅ Add this line
   user: User | null;
+  setIsAuthenticated: (value: boolean) => void;  // ✅ Added this
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
@@ -27,22 +28,21 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);  // ✅ Added this
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
   useEffect(() => {
     const storedUser = localStorage.getItem("auth_user");
     if (storedUser) {
       try {
         const parsedUser: User = JSON.parse(storedUser);
-        setUser({
-          ...parsedUser,
-          mfaCompleted: parsedUser.mfaCompleted || {
-            password: false,
-            biometrics: false,
-            googleAuth: false,
-          },
-        });
+        const allMfaCompleted = 
+          parsedUser.mfaCompleted.password &&
+          parsedUser.mfaCompleted.biometrics &&
+          parsedUser.mfaCompleted.googleAuth;
+
+        setUser(parsedUser);
+        setIsAuthenticated(allMfaCompleted);
       } catch (error) {
         console.error("Failed to parse stored user", error);
       }
@@ -122,13 +122,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const updatedUser = {
       ...user,
       mfaCompleted: {
-        password: true,
-        biometrics: false,
-        googleAuth: false,
+        ...user.mfaCompleted,
+        googleAuth: true,
       },
     };
     setUser(updatedUser);
     localStorage.setItem("auth_user", JSON.stringify(updatedUser));
+    setIsAuthenticated(
+      updatedUser.mfaCompleted.password &&
+      updatedUser.mfaCompleted.biometrics &&
+      updatedUser.mfaCompleted.googleAuth
+    );
   };
 
   const logout = () => {
@@ -158,13 +162,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   return (
     <AuthContext.Provider
       value={{
+        setIsAuthenticated,
         user,
         setUser,
-        isAuthenticated:
-          !!user &&
-          user.mfaCompleted?.password &&
-          user.mfaCompleted?.biometrics &&
-          user.mfaCompleted?.googleAuth,
+        isAuthenticated,
         isLoading,
         login,
         register,
