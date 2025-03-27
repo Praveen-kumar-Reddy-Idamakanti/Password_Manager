@@ -12,24 +12,36 @@ interface MfaGoogleAuthProps {
   onComplete: () => void;
 }
 
-const MfaGoogleAuthScanner= ({ onComplete }: MfaGoogleAuthProps) => {
+const MfaGoogleAuthScanner = ({ onComplete }: MfaGoogleAuthProps) => {
   const { validateOtp, completeMfaStep } = useAuth();
   const [otp, setOtp] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [showQrCode, setShowQrCode] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+  const { user } = useAuth(); // Assuming user object contains email
+  
+  if (!user?.email) {
+    toast.error("User email not found");
+    return;
+  }
 
-  // For demonstration purposes, create a static QR code data
-  // In a real app, this would be generated server-side
   const fetchQrCode = async () => {
     const response = await fetch("http://localhost:5000/auth/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: "user@example.com" }),
+      body: JSON.stringify({ email:user.email }),
     });
     const data = await response.json();
-    setQrCodeDataUrl(data.qrCodeUrl);
+    if (data.qrCodeUrl){
+      setQrCodeDataUrl(data.qrCodeUrl);
+      setShowQrCode(true);
+    }
+    else{
+      toast.error("Failed to generate QR Code");
+    }
+    
   };
+  
   
   const handleVerifyOtp = async () => {
     if (otp.length !== 6) {
@@ -39,12 +51,13 @@ const MfaGoogleAuthScanner= ({ onComplete }: MfaGoogleAuthProps) => {
   
     setIsVerifying(true);
     try {
-      const response = await fetch("http://localhost:5000/auth/verify", {
+      console.log(user.email);
+        const response = await fetch("http://localhost:5000/auth/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: "user@example.com", token: otp }),
+        body: JSON.stringify({email:user.email, token: otp }),
       });
-  
+
       const data = await response.json();
       console.log("OTP Verification Response:", data);  // Log response for debugging
       if (data.success) {

@@ -39,18 +39,33 @@ const Login = () => {
 
   const onSubmit = async (data: LoginFormValues) => {
     try {
-      const success = await login(data.email, data.password);
-      if (success) {
+      console.log("hello");
+
+      const response = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: data.email, password: data.password }),
+      });
+
+
+      const result = await response.json();
+
+      if (response.ok) {
         toast.success("Login successful! Proceeding to 2FA verification");
+        console.log(user);
+        const success = await login(data.email, data.password);
+        user.mfaCompleted.biometrics=true;
+        if (success) {
         setAuthStep("biometrics");
+        };
+
       } else {
-        toast.error("Invalid email or password");
+        toast.error(result.message || "Login failed. Try again.");
       }
     } catch (error) {
       toast.error("Something went wrong. Please try again.");
     }
   };
-
   const handleBiometricsComplete = () => {
     setAuthStep("googleAuth");
   };

@@ -7,8 +7,6 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
-
-
 interface MfaGoogleAuthProps {
   onComplete: () => void;
 }
@@ -19,17 +17,27 @@ const MfaGoogleAuthOtp = ({ onComplete }: MfaGoogleAuthProps) => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [showQrCode, setShowQrCode] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
-
-  // For demonstration purposes, create a static QR code data
-  // In a real app, this would be generated server-side
+  const { user } = useAuth(); // Assuming user object contains email
+  
+  if (!user?.email) {
+    toast.error("User email not found");
+    return;
+  }
   const fetchQrCode = async () => {
     const response = await fetch("http://localhost:5000/auth/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: "user@example.com" }),
+      body: JSON.stringify({ email:user.email }),
     });
     const data = await response.json();
-    setQrCodeDataUrl(data.qrCodeUrl);
+    if (data.qrCodeUrl){
+      setQrCodeDataUrl(data.qrCodeUrl);
+      setShowQrCode(true);
+    }
+    else{
+      toast.error("Failed to generate QR Code");
+    }
+    
   };
   
   const handleVerifyOtp = async () => {
@@ -37,17 +45,20 @@ const MfaGoogleAuthOtp = ({ onComplete }: MfaGoogleAuthProps) => {
       toast.error("Please enter a 6-digit code");
       return;
     }
+    console.log("I am heere");
   
     setIsVerifying(true);
     try {
+      console.log("Iam here before verify from backend")
+
       const response = await fetch("http://localhost:5000/auth/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: "user@example.com", token: otp }),
+        body: JSON.stringify({ email: "app@email.com", token: otp }),
       });
-  
+      console.log("Iam here afteer verify from backend")
       const data = await response.json();
-      if (data) {
+      if (data.success) {
         completeMfaStep("googleAuth");
         toast.success("OTP verification successful");
         onComplete();

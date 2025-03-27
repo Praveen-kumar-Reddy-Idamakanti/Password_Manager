@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 
 interface User {
@@ -12,6 +11,7 @@ interface User {
 }
 
 interface AuthContextType {
+  setUser: (user: User | null) => void;  // ✅ Add this line
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -31,46 +31,61 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in from localStorage
     const storedUser = localStorage.getItem("auth_user");
     if (storedUser) {
       try {
-        setUser(JSON.parse(storedUser));
+        const parsedUser: User = JSON.parse(storedUser);
+        setUser({
+          ...parsedUser,
+          mfaCompleted: parsedUser.mfaCompleted || {
+            password: false,
+            biometrics: false,
+            googleAuth: false,
+          },
+        });
       } catch (error) {
         console.error("Failed to parse stored user", error);
       }
     }
-    
     setIsLoading(false);
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      // In a real application, this would be an API call
-      // For demo, we'll simulate a successful login
-      const newUser: User = {
-        id: crypto.randomUUID(),
-        email,
-        mfaCompleted: {
-          password: true,
-          biometrics: false,
-          googleAuth: false,
-        }
-      };
-      
-      setUser(newUser);
-      localStorage.setItem("auth_user", JSON.stringify(newUser));
-      return true;
+      const response = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        const newUser: User = {
+          id: data.user.id,
+          email: data.user.email,
+          mfaCompleted: data.user.mfaCompleted || {
+            password: false,
+            biometrics: false,
+            googleAuth: false,
+          },
+        };
+
+        setUser(newUser);
+        localStorage.setItem("auth_token", data.token);
+        localStorage.setItem("auth_user", JSON.stringify(newUser));
+        return true;
+      } else {
+        console.error("Login failed:", data.message);
+        return false;
+      }
     } catch (error) {
-      console.error("Login failed", error);
+      console.error("Error logging in:", error);
       return false;
     }
   };
 
   const register = async (email: string, password: string): Promise<boolean> => {
     try {
-      // In a real application, this would be an API call
-      // For demo, we'll simulate a successful registration
       const newUser: User = {
         id: crypto.randomUUID(),
         email,
@@ -78,9 +93,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           password: true,
           biometrics: false,
           googleAuth: false,
-        }
+        },
       };
-      
       setUser(newUser);
       localStorage.setItem("auth_user", JSON.stringify(newUser));
       return true;
@@ -92,31 +106,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const completeMfaStep = (step: "password" | "biometrics" | "googleAuth") => {
     if (!user) return;
-    
     const updatedUser = {
       ...user,
       mfaCompleted: {
         ...user.mfaCompleted,
         [step]: true,
-      }
+      },
     };
-    
     setUser(updatedUser);
     localStorage.setItem("auth_user", JSON.stringify(updatedUser));
   };
-  
+
   const resetMfaStatus = () => {
     if (!user) return;
-    
     const updatedUser = {
       ...user,
       mfaCompleted: {
         password: true,
         biometrics: false,
         googleAuth: false,
-      }
+      },
     };
-    
     setUser(updatedUser);
     localStorage.setItem("auth_user", JSON.stringify(updatedUser));
   };
@@ -124,24 +134,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem("auth_user");
+    localStorage.removeItem("auth_token");
+    window.location.href = "/login"; // ✅ Redirect to login page after logout
   };
 
   const validateOtp = async (otp: string): Promise<boolean> => {
-    // In a real application, this would validate against a server
-    // For demo, we'll accept any 6-digit code
     return otp.length === 6 && /^\d+$/.test(otp);
   };
 
   const setupBiometrics = async (): Promise<boolean> => {
     try {
-      // Check if browser supports WebAuthn
       if (!window.PublicKeyCredential) {
         console.error("WebAuthn not supported in this browser");
         return false;
       }
-      
-      // In a real app, this would involve actual WebAuthn registration
-      // For demo purposes, we'll simulate success
       return true;
     } catch (error) {
       console.error("Biometrics setup failed", error);
@@ -153,10 +159,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     <AuthContext.Provider
       value={{
         user,
-        isAuthenticated: !!user && 
-          user.mfaCompleted.password && 
-          user.mfaCompleted.biometrics && 
-          user.mfaCompleted.googleAuth,
+        setUser,
+        isAuthenticated:
+          !!user &&
+          user.mfaCompleted?.password &&
+          user.mfaCompleted?.biometrics &&
+          user.mfaCompleted?.googleAuth,
         isLoading,
         login,
         register,

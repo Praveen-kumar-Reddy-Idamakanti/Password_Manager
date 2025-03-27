@@ -11,7 +11,6 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import MfaBiometrics from "@/components/auth/MfaBiometrics";
 import MfaGoogleAuthScanner from "@/components/auth/MfaGoogleAuthScanner";
-
 const registerSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z
@@ -31,7 +30,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 const Register = () => {
   const navigate = useNavigate();
-  const { register, user } = useAuth();
+  const { register, user ,setUser} = useAuth();
   const [authStep, setAuthStep] = useState<"password" | "biometrics" | "googleAuth">("password");
   
   const form = useForm<RegisterFormValues>({
@@ -55,7 +54,12 @@ const Register = () => {
       
       if (response.ok) {
         toast.success("Registration successful! Setting up 2FA");
+        const newUser = {id: crypto.randomUUID(),  email: data.email, mfaCompleted: { password: true, biometrics: false, googleAuth: false } };
+        setUser(newUser);
         setAuthStep("biometrics");
+         // ✅ Update AuthContext state
+        await new Promise((resolve) => setTimeout(resolve, 0)); // Ensure state update
+        console.log("Redirecting to biometrics..."); // Debugging
       } else {
         toast.error(result.message || "Registration failed. Try again.");
       }
