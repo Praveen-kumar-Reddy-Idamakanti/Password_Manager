@@ -59,7 +59,6 @@ app.post("/api/auth/login", async (req, res) => {
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
     res.cookie("token", token, {
-      httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
     });
@@ -107,15 +106,42 @@ app.post("/api/credentials", verifyToken, async (req, res) => {
 
 // Update a credential
 app.put("/api/credentials/:id", verifyToken, async (req, res) => {
-  const updatedCredential = await Credential.findByIdAndUpdate(req.params.id, req.body, { new: true });
-  res.json(updatedCredential);
+  const { id } = req.params;
+
+  if (!id || id.length !== 24) {
+    return res.status(400).json({ error: "Invalid ID provided" });
+  }
+
+  try {
+    const updatedCredential = await Credential.findByIdAndUpdate(id, req.body, { new: true });
+
+    if (!updatedCredential) {
+      return res.status(404).json({ error: "Credential not found" });
+    }
+
+    res.json(updatedCredential);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 // Delete a credential
 app.delete("/api/credentials/:id", verifyToken, async (req, res) => {
-  await Credential.findByIdAndDelete(req.params.id);
-  res.json({ message: "Credential deleted" });
+  console.log("Headers received:", req.headers); // Debugging
+  console.log("Deleting credential ID:", req.params.id);
+
+  try {
+    const deletedCredential = await Credential.findByIdAndDelete(req.params.id);
+    if (!deletedCredential) {
+      return res.status(404).json({ message: "Credential not found" });
+    }
+    res.json({ message: "Credential deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
 });
+
 app.post("/api/auth/logout", (req, res) => {
   res.clearCookie("token", { httpOnly: true, sameSite: "Strict", secure: process.env.NODE_ENV === "production" });
   res.json({ message: "Logged out successfully" });

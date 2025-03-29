@@ -111,7 +111,7 @@ export function CredentialCard({ credential, onEdit, onDelete }: CredentialCardP
             <Pencil className="h-3.5 w-3.5 mr-1" />
             Edit
           </Button>
-          <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => onDelete(credential.id)}>
+          <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => onDelete(credential._id)}>
             <Trash className="h-3.5 w-3.5 mr-1" />
             Delete
           </Button>

@@ -1,5 +1,4 @@
 const express = require("express");
-const mongoose = require("mongoose");
 const speakeasy = require("speakeasy");
 const qrcode = require("qrcode");
 const User=require("../models/User")

@@ -21,7 +21,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-
+const getTokenFromCookies = () => {
+  const cookies = document.cookie.split("; ");
+  const tokenCookie = cookies.find(row => row.startsWith("token="));
+  return tokenCookie ? tokenCookie.split("=")[1] : null;
+};
 const Index = () => {
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [filteredCredentials, setFilteredCredentials] = useState<Credential[]>([]);
@@ -30,8 +34,8 @@ const Index = () => {
   const [editingCredential, setEditingCredential] = useState<Credential | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [credentialToDelete, setCredentialToDelete] = useState<string | null>(null);
-  const token = localStorage.getItem("token"); // Ensure token is available
-
+  const token =getTokenFromCookies();
+  console.log(`i am token in  Index ${token}`)
   useEffect(() => {
     const fetchCredentials = async () => {
       try {
@@ -74,11 +78,11 @@ const Index = () => {
     ));
   }, [searchQuery, credentials]);
 
-  const handleSaveCredential = async (data: Omit<Credential, "id" | "createdAt" | "updatedAt">) => {
+  const handleSaveCredential = async (data: Omit<Credential, "_id" | "createdAt" | "updatedAt">) => {
     if (editingCredential) {
       const updatedCredential = { ...editingCredential, ...data };
       await updateCredential(updatedCredential,token);
-      setCredentials((prev) => prev.map((c) => (c.id === updatedCredential.id ? updatedCredential : c)));
+      setCredentials((prev) => prev.map((c) => (c._id === updatedCredential._id ? updatedCredential : c)));
       toast.success("Credential updated successfully");
     } else {
       const newCredential = await addCredential(data,token);
@@ -94,15 +98,19 @@ const Index = () => {
     setDialogOpen(true);
   };
 
-  const handleDeleteConfirm = (id: string) => {
-    setCredentialToDelete(id);
+  const handleDeleteConfirm = (_id: string) => {
+    setCredentialToDelete(_id);
     setDeleteDialogOpen(true);
   };
 
   const handleDelete = async () => {
+    console.log("i am in outside index");
+
     if (credentialToDelete) {
+      console.log("i am in inside index");
+      console.log(`iam in handle delete : ${token}`)
       await deleteCredential(credentialToDelete,token);
-      setCredentials((prev) => prev.filter((c) => c.id !== credentialToDelete));
+      setCredentials((prev) => prev.filter((c) => c._id !== credentialToDelete));
       toast.success("Credential deleted");
       setCredentialToDelete(null);
     }
@@ -133,7 +141,7 @@ const Index = () => {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {filteredCredentials.map((credential) => (
               <CredentialCard
-                key={credential.id||credential.title}
+                key={credential._id||credential.title}
                 credential={credential}
                 onEdit={handleEdit}
                 onDelete={handleDeleteConfirm}

@@ -28,16 +28,29 @@ export const addCredential = async (credential:any, token:string) => {
 };
 
 export const updateCredential = async (credential:any, token:string) => {
-  await fetch(`${API_URL}/${credential.id}`, {
+  if (!credential?._id) {
+    console.error("Invalid credential ID:", credential);
+    return;
+  }
+  await fetch(`${API_URL}/${credential._id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json", Authorization: token },
     body: JSON.stringify(credential),
+    credentials:"include"
   });
 };
 
-export const deleteCredential = async (id:string, token:string) => {
-  await fetch(`${API_URL}/${id}`, {
+export const deleteCredential = async (_id:string, token:string) => {
+  console.log("i am in deleteCredential frontend");
+  console.log(`token ${token}`);
+  console.log(`_id ${_id}`);
+
+  await fetch(`${API_URL}/${_id}`, {
     method: "DELETE",
-    headers: { Authorization: token },
+    headers: { 
+      "Authorization": `Bearer ${token}`, // Ensure "Bearer " is included
+      "Content-Type": "application/json",
+    },
+    credentials:"include"
   });
 };
