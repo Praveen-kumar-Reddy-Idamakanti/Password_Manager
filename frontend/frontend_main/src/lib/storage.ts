@@ -1,92 +1,43 @@
+const API_URL = "http://localhost:5000/api/credentials";
 
-import { Credential } from "./types";
-
-const STORAGE_KEY = "password-manager-credentials";
-
-// Sample data for initial setup
-const sampleCredentials: Credential[] = [
-  {
-    id: "1",
-    title: "Gmail",
-    username: "user@gmail.com",
-    password: "password123",
-    url: "https://gmail.com",
-    category: "email",
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  },
-  {
-    id: "2",
-    title: "Netflix",
-    username: "netflix_user",
-    password: "netflix_pass",
-    url: "https://netflix.com",
-    category: "entertainment",
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  },
-  {
-    id: "3",
-    title: "GitHub",
-    username: "github_user",
-    password: "github_pass",
-    url: "https://github.com",
-    category: "development",
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  },
-];
-
-export const getStoredCredentials = (): Credential[] => {
-  if (typeof window === "undefined") return [];
-
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (!stored) {
-    // Initialize with sample data on first run
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sampleCredentials));
-    return sampleCredentials;
+export const getStoredCredentials = async (token: string) => {
+  const response = await fetch(API_URL, {
+    headers: { 
+      "Content-Type":"application/json",
+      Authorization: token },
+  });
+  if (!response.ok){
+    const errorData = await response.json();
+    if (errorData.message === "Invalid token") {
+      console.error("Session expired. Logging out...");
+      localStorage.removeItem("token");
+      window.location.href = "/login"; // Redirect to login page
+    }
   }
-
-  try {
-    return JSON.parse(stored);
-  } catch (error) {
-    console.error("Failed to parse credentials from storage:", error);
-    return [];
-  }
+  return response.json();
 };
 
-export const saveCredentials = (credentials: Credential[]): void => {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(credentials));
+export const addCredential = async (credential:any, token:string) => {
+  const response = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: token },
+    body: JSON.stringify(credential),
+    credentials:"include"
+  });
+  return response.json();
 };
 
-export const addCredential = (credential: Omit<Credential, "id" | "createdAt" | "updatedAt">): Credential => {
-  const credentials = getStoredCredentials();
-  const newCredential: Credential = {
-    ...credential,
-    id: crypto.randomUUID(),
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  };
-  
-  saveCredentials([...credentials, newCredential]);
-  return newCredential;
+export const updateCredential = async (credential:any, token:string) => {
+  await fetch(`${API_URL}/${credential.id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: token },
+    body: JSON.stringify(credential),
+  });
 };
 
-export const updateCredential = (credential: Credential): void => {
-  const credentials = getStoredCredentials();
-  const index = credentials.findIndex((c) => c.id === credential.id);
-  
-  if (index !== -1) {
-    credentials[index] = {
-      ...credential,
-      updatedAt: Date.now(),
-    };
-    saveCredentials(credentials);
-  }
-};
-
-export const deleteCredential = (id: string): void => {
-  const credentials = getStoredCredentials();
-  saveCredentials(credentials.filter((c) => c.id !== id));
+export const deleteCredential = async (id:string, token:string) => {
+  await fetch(`${API_URL}/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: token },
+  });
 };

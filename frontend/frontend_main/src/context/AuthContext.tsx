@@ -50,14 +50,44 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsLoading(false);
   }, []);
 
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/api/auth/me", {
+          method: "GET",
+          credentials: "include", // ✅ Send cookies
+        });
+  
+        const data = await response.json();
+        console.log("Auth Check Response:", data);
+  
+        if (response.ok && data.user) {
+          setUser(data.user);
+          setIsAuthenticated(true);
+        } else {
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+      } catch (error) {
+        console.error("Failed to check authentication", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+  
+    checkAuthStatus();
+  }, []);
+  
+
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       const response = await fetch("http://localhost:5000/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
+        credentials:"include"
       });
-
+      console.log("iam okay");
       const data = await response.json();
       if (response.ok) {
         const newUser: User = {
@@ -71,7 +101,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         };
 
         setUser(newUser);
-        localStorage.setItem("auth_token", data.token);
         localStorage.setItem("auth_user", JSON.stringify(newUser));
         return true;
       } else {
@@ -135,11 +164,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     );
   };
 
-  const logout = () => {
+  const logout = async() => {
+    try {
+      await fetch("http://localhost:5000/api/auth/logout", {
+        method: "POST",
+        credentials: "include", // ✅ Ensure cookies are included
+      });
     setUser(null);
+    setIsAuthenticated(false);
     localStorage.removeItem("auth_user");
-    localStorage.removeItem("auth_token");
     window.location.href = "/login"; // ✅ Redirect to login page after logout
+    }  catch(error){
+      console.error("Error logging out:", error);
+    }
   };
 
   const validateOtp = async (otp: string): Promise<boolean> => {

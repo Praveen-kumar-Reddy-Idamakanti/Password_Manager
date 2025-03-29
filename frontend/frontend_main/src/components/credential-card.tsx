@@ -72,12 +72,17 @@ export function CredentialCard({ credential, onEdit, onDelete }: CredentialCardP
         <div className="space-y-1">
           <div className="text-sm font-medium">Password</div>
           <div className="flex items-center group relative px-3 py-2 rounded-md bg-muted/50">
-            <span className={cn(
-              "text-sm truncate flex-1",
-              !showPassword && "password-input"
-            )}>
-              {showPassword ? credential.password : '•'.repeat(Math.min(credential.password.length, 12))}
-            </span>
+          <span className={cn(
+            "text-sm truncate flex-1",
+            !showPassword && "password-input"
+          )}>
+            {credential.password
+              ? showPassword
+                ? credential.password
+                : "•".repeat(Math.min(credential.password.length||0, 12))
+              : "N/A"}
+          </span>
+
             <div className="flex opacity-0 group-hover:opacity-100">
               <Button
                 variant="ghost"

@@ -39,11 +39,10 @@ const Login = () => {
 
   const onSubmit = async (data: LoginFormValues) => {
     try {
-      console.log("hello");
-
       const response = await fetch("http://localhost:5000/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include", // Important for cookies,
         body: JSON.stringify({ email: data.email, password: data.password }),
       });
 

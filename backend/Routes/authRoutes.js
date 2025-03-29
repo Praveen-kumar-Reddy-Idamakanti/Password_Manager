@@ -38,9 +38,9 @@ router.post("/generate", async (req, res) => {
 
 // Verify OTP
 router.post("/verify", async (req, res) => {
-    console.log("hello");
+    
     const { email, token } = req.body;
-    console.log(email,token);
+    //console.log(email,token);
     if (!email || !token) {
         return res.status(400).json({ error: "email and token are required" });
     }
@@ -48,10 +48,10 @@ router.post("/verify", async (req, res) => {
     try {
         const user = await User.findOne({ email:email });
 
-        console.log("hello");
+       
         const secret = user.secret; // Replace with actual stored secret
 
-console.log("TOTP Codes for Different Time Steps:");
+//console.log("TOTP Codes for Different Time Steps:");
 for (let i = -3; i <= 3; i++) {  // Generate for past (-3) to future (+3) windows
     const token = speakeasy.totp({
         secret,
@@ -59,9 +59,9 @@ for (let i = -3; i <= 3; i++) {  // Generate for past (-3) to future (+3) window
         step: 30,  // Default step size is 30 seconds
         time: Math.floor(Date.now() / 1000) + i * 30  // Shift time for different windows
     });
-    console.log(`Window ${i}: ${token}`);
+   // console.log(`Window ${i}: ${token}`);
 }
-        console.log(user);
+        //console.log(user);
         if (!user) {
             return res.status(400).json({ error: "User not found" });
         }
@@ -72,9 +72,9 @@ for (let i = -3; i <= 3; i++) {  // Generate for past (-3) to future (+3) window
             token,
             window: 3, // Allows time drift
         });
-        console.log("Stored Secret:", user.secret);
-        console.log("Received OTP:", token);
-        console.log("OTP verification result:", verified);
+        // console.log("Stored Secret:", user.secret);
+        // console.log("Received OTP:", token);
+        // console.log("OTP verification result:", verified);
         if (verified) {
             res.json({ success: true, message: "OTP verified successfully" });
         } else {
@@ -84,5 +84,36 @@ for (let i = -3; i <= 3; i++) {  // Generate for past (-3) to future (+3) window
         res.status(500).json({ error: "Database error", details: error.message });
     }
 });
+const verifyToken = (req, res, next) => {
+    const token = req.cookies.token; // Read from cookies
+    if (!token) return res.status(401).json({ message: "Unauthorized" });
+  
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+      if (err) return res.status(403).json({ message: "Invalid token" });
+      req.userId = decoded.id;
+      next();
+    });
+  };
+router.get("/me", verifyToken, async (req, res) => {
+    try {
+      const user = await User.findById(req.userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+  
+      res.json({
+        user: {
+          id: user._id,
+          email: user.email,
+          mfaCompleted: user.mfaCompleted || {
+            password: false,
+            biometrics: false,
+            googleAuth: false,
+          },
+        },
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Server error", error });
+    }
+  });
+  
 
 module.exports = router;
