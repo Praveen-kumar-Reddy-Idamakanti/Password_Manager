@@ -13,7 +13,7 @@ The system ensures that stored credentials remain encrypted and secure, with fun
 - Encrypted credential storage using MongoDB.
 - User-friendly React-based interface.
 - Ability to store and retrieve credentials securely.
-- Edit and update stored credentials (Work in Progress).
+- Edit and update stored credentials.
 - Production deployment preparations.
 
 ## Technologies Used
