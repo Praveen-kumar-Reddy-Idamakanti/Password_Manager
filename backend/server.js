@@ -10,6 +10,8 @@ const User = require("./models/User");
 const Credential = require("./models/Credentials");
 const app = express();
 const cookieParser = require("cookie-parser");
+const { encrypt } = require("./utils/encryption");
+const { decrypt } = require("./utils/encryption");
 
 
 app.use(cookieParser());
@@ -92,17 +94,68 @@ const verifyToken = (req, res, next) => {
 // CRUD Routes for Credentials
 
 // Get all credentials
+
 app.get("/api/credentials", verifyToken, async (req, res) => {
-  const credentials = await Credential.find({ userId: req.userId });
-  res.json(credentials);
+  try {
+    const credentials = await Credential.find({ userId: req.userId });
+
+    const decryptedCredentials = credentials.map((cred) => {
+      let decryptedPassword;
+      try {
+        decryptedPassword = decrypt(cred.password, cred.iv);
+      } catch (e) {
+        console.error(`Failed to decrypt credential ${cred._id}:`, e.message);
+        decryptedPassword = "Unable to decrypt";
+      }
+
+      return {
+        ...cred.toObject(),
+        password: decryptedPassword,
+      };
+    });
+    res.json(decryptedCredentials);
+  } catch (err) {
+    console.error("Error fetching credentials:", err.message);
+    res.status(500).json({ message: "Server error during decryption" });
+  }
 });
 
+
+
 // Add a new credential
+
 app.post("/api/credentials", verifyToken, async (req, res) => {
-  const newCredential = new Credential({ ...req.body, userId: req.userId });
-  await newCredential.save();
-  res.json(newCredential);
+  try {
+    const { title, website, username, password, category, url } = req.body;
+
+    // Make sure required fields are present
+    if (!title || !username || !password) {
+      return res.status(400).json({ message: "Title, username, and password are required" });
+    }
+
+    const { encryptedData, iv } = encrypt(password);
+
+    const newCredential = new Credential({
+      title,
+      userId: req.userId,
+      website,
+      username,
+      category,
+      url,
+      password: encryptedData,
+      iv,
+    });
+
+    await newCredential.save();
+    console.log(newCredential)
+    res.json(newCredential);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Encryption error", error: err.message });
+  }
 });
+
+
 
 // Update a credential
 app.put("/api/credentials/:id", verifyToken, async (req, res) => {
