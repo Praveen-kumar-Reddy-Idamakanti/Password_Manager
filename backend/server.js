@@ -103,6 +103,7 @@ app.get("/api/credentials", verifyToken, async (req, res) => {
       let decryptedPassword;
       try {
         decryptedPassword = decrypt(cred.password, cred.iv);
+        console.log(decryptedPassword);
       } catch (e) {
         console.error(`Failed to decrypt credential ${cred._id}:`, e.message);
         decryptedPassword = "Unable to decrypt";
